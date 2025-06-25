@@ -28,7 +28,7 @@
         let mediaRecorder;
         let webSocket;
 
-        const wsUrl = `ws://${window.location.host}`; // Assumes WebSocket server is on the same host
+        const wsUrl = `wss://${window.location.host}`; // Assumes WebSocket server is on the same host
 
         startButton.onclick = async () => {
             try {
