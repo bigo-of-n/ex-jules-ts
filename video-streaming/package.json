@@ -1,0 +1,39 @@
+{
+  "name": "video-streaming",
+  "version": "1.0.0",
+  "description": "Video streaming PoC using pnpm and Tailwind CDN",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ts": "tsc",
+    "build": "pnpm run build:ts",
+    "start": "node dist/index.js",
+    "watch:ts": "tsc -w",
+    "dev": "pnpm run watch:ts & nodemon dist/index.js"
+  },
+  "keywords": [
+    "video",
+    "stream",
+    "websocket",
+    "express",
+    "typescript",
+    "pnpm",
+    "tailwind cdn"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.11",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.14.13",
+    "nodemon": "^3.1.4"
+  }
+}

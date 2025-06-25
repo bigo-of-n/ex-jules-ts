@@ -1,0 +1,26 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+dist/ # General dist folder, can be project specific if needed
+
+# Project Specific
+# For video-streaming project
+video-streaming/node_modules/
+video-streaming/dist/
+video-streaming/streams/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db

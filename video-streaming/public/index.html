@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Streamer - Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Add a small script to check for mobile and prompt if necessary (conceptual)
+        // This is a very basic check. More sophisticated checks might be needed.
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            // This is a placeholder for a more noticeable prompt.
+            // For now, we'll just log it. A modal or a non-intrusive banner would be better.
+            console.log("Mobile device detected. Consider using the camera selector if the default camera is not desired.");
+            // alert("Mobile device detected. You can use the camera selector to choose between front and rear cameras if available.");
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen font-sans">
+
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+        <div class="container mx-auto text-center">
+            <h1 class="text-2xl font-bold">Real-time Video Broadcaster</h1>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
+            <div class="mb-4">
+                <label for="cameraSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Camera:</label>
+                <select id="cameraSelect" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    {/* Options will be populated by JavaScript */}
+                </select>
+            </div>
+
+            <video id="localVideo" autoplay muted playsinline class="w-full h-auto border-2 border-gray-300 rounded-md mb-4 bg-black"></video>
+
+            <div class="flex space-x-4 mb-4">
+                <button id="startButton" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    Start Broadcasting
+                </button>
+                <button id="stopButton" disabled class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    Stop Broadcasting
+                </button>
+            </div>
+            <div id="status" class="text-center text-gray-600 italic p-2 bg-gray-50 rounded-md">Not connected</div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 text-center text-sm">
+        <div class="container mx-auto">
+            <p>&copy; 2024 Video Streaming PoC. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const localVideo = document.getElementById('localVideo');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDiv = document.getElementById('status');
+
+        let localStream;
+        let mediaRecorder;
+        let webSocket;
+        let selectedDeviceId = null;
+
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${protocol}://${window.location.host}`;
+
+        // Populate camera select
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                if (videoDevices.length === 0) {
+                    statusDiv.textContent = "No cameras found.";
+                    cameraSelect.disabled = true;
+                    startButton.disabled = true;
+                    return;
+                }
+
+                videoDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${cameraSelect.options.length + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+                selectedDeviceId = videoDevices[0].deviceId; // Default to the first camera
+
+                // On mobile, if multiple cameras, try to guess a "rear" camera as default if desired (heuristic)
+                // This is a simple heuristic, actual front/rear detection is more complex
+                if (/Mobi|Android/i.test(navigator.userAgent) && videoDevices.length > 1) {
+                    const rearCamera = videoDevices.find(device => /back|rear|environment/i.test(device.label));
+                    if (rearCamera) {
+                        selectedDeviceId = rearCamera.deviceId;
+                        cameraSelect.value = selectedDeviceId;
+                        console.log("Switched to likely rear camera on mobile: ", rearCamera.label);
+                        // You could add a small, non-intrusive notification here
+                        const mobilePrompt = document.createElement('p');
+                        mobilePrompt.textContent = "Using rear camera. You can change this in the selector.";
+                        mobilePrompt.className = "text-xs text-center text-blue-500 mt-1";
+                        // cameraSelect.parentNode.insertBefore(mobilePrompt, cameraSelect.nextSibling);
+                         // Better: add it near the status or as a temporary toast.
+                        statusDiv.insertAdjacentHTML('afterend', '<p class="text-xs text-center text-blue-500 mt-1" id="mobileCameraNote">Switched to likely rear camera. Change via selector if needed.</p>');
+                        setTimeout(() => {
+                            const note = document.getElementById('mobileCameraNote');
+                            if(note) note.remove();
+                        }, 5000);
+                    }
+                }
+
+
+            } catch (err) {
+                console.error("Error enumerating devices:", err);
+                statusDiv.textContent = "Error accessing media devices. Check permissions.";
+            }
+        }
+
+        cameraSelect.onchange = () => {
+            selectedDeviceId = cameraSelect.value;
+            if (localStream) { // If already streaming, stop and restart with new camera
+                stopBroadcasting(false); // Stop without disabling buttons for quick restart
+                // Small delay to ensure resources are released
+                setTimeout(() => startButton.onclick(), 100);
+            }
+        };
+
+        startButton.onclick = async () => {
+            if (!selectedDeviceId && cameraSelect.options.length > 0) {
+                 selectedDeviceId = cameraSelect.options[0].value; // Ensure a device is selected
+            }
+            if (!selectedDeviceId) {
+                statusDiv.textContent = "No camera selected or available.";
+                console.error("No camera selected or available.");
+                return;
+            }
+
+            try {
+                // Stop existing tracks before starting new ones
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                }
+
+                const constraints = {
+                    video: { deviceId: { exact: selectedDeviceId } },
+                    audio: true // Or use a specific audio input if you add a selector for mics
+                };
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                localVideo.srcObject = localStream;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                cameraSelect.disabled = true; // Disable selector while streaming
+                statusDiv.textContent = 'Previewing selected camera...';
+
+                webSocket = new WebSocket(wsUrl);
+
+                webSocket.onopen = () => {
+                    statusDiv.textContent = 'Connected. Starting stream...';
+                    // Use a common MIME type, ensure it's supported by server/client for playback
+                    const options = { mimeType: 'video/webm; codecs=vp8,opus' };
+                    try {
+                        mediaRecorder = new MediaRecorder(localStream, options);
+                    } catch (e) {
+                        console.warn("Preferred mimeType not supported, trying default", e);
+                        mediaRecorder = new MediaRecorder(localStream); // Fallback
+                    }
+
+                    console.log("Using MediaRecorder with mimeType:", mediaRecorder.mimeType);
+
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0 && webSocket.readyState === WebSocket.OPEN) {
+                            webSocket.send(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstart = () => {
+                        statusDiv.textContent = 'Broadcasting...';
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        // statusDiv.textContent = 'Stopped broadcasting. Previewing local camera.'; // Keep preview if camera is still selected
+                        // If stopBroadcasting(true) was called, buttons will be reset
+                    };
+
+                    mediaRecorder.onerror = (event) => {
+                        console.error('MediaRecorder error:', event.error);
+                        statusDiv.textContent = `MediaRecorder Error: ${event.error.name}. Check console.`;
+                        stopBroadcasting(true);
+                    };
+
+                    mediaRecorder.start(1000); // Send data every 1000ms
+                };
+
+                webSocket.onclose = () => {
+                    statusDiv.textContent = 'Disconnected from server.';
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                    // Don't reset buttons here if stop was intentional via stopButton
+                };
+
+                webSocket.onerror = (error) => {
+                    console.error('WebSocket Error:', error);
+                    statusDiv.textContent = 'WebSocket error. See console.';
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                };
+
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                statusDiv.textContent = `Error: ${error.name}. Grant permission or check selected camera.`;
+                startButton.disabled = false; // Allow trying again
+                stopButton.disabled = true;
+                cameraSelect.disabled = false;
+            }
+        };
+
+        stopButton.onclick = () => {
+            stopBroadcasting(true); // Full stop, reset UI
+        };
+
+        function stopBroadcasting(resetUI = true) {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            if (webSocket && (webSocket.readyState === WebSocket.OPEN || webSocket.readyState === WebSocket.CONNECTING) ) {
+                webSocket.close();
+            }
+            // Don't stop localStream tracks here if we want to keep preview after stopping broadcast
+            // localStream.getTracks().forEach(track => track.stop());
+            // localVideo.srcObject = null; // Keep preview
+
+            if (resetUI) {
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                cameraSelect.disabled = false;
+                statusDiv.textContent = 'Stopped. Ready to start or select camera.';
+                 if (localStream) { // If fully stopping, release camera
+                    localStream.getTracks().forEach(track => track.stop());
+                    localVideo.srcObject = null;
+                    localStream = null; // Clear the stream
+                 }
+            } else {
+                // If not resetting UI (e.g. changing camera), just update status
+                 statusDiv.textContent = 'Stream stopped. Select camera or start again.';
+            }
+        }
+
+        // Initial population of cameras
+        getCameras();
+
+        // Ensure cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopBroadcasting(true);
+        });
+    </script>
+</body>
+</html>
