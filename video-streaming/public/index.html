@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Streamer</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+        video { border: 1px solid black; margin-bottom: 10px; }
+        button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
+        #status { margin-top: 10px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>Video Broadcaster</h1>
+    <video id="localVideo" autoplay muted playsinline width="640" height="480"></video>
+    <button id="startButton">Start Broadcasting</button>
+    <button id="stopButton" disabled>Stop Broadcasting</button>
+    <div id="status">Not connected</div>
+
+    <script>
+        const localVideo = document.getElementById('localVideo');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDiv = document.getElementById('status');
+
+        let localStream;
+        let mediaRecorder;
+        let webSocket;
+
+        const wsUrl = `ws://${window.location.host}`; // Assumes WebSocket server is on the same host
+
+        startButton.onclick = async () => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = localStream;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                statusDiv.textContent = 'Previewing local camera...';
+
+                webSocket = new WebSocket(wsUrl);
+
+                webSocket.onopen = () => {
+                    statusDiv.textContent = 'Connected to server. Starting stream...';
+                    mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm; codecs=vp8' }); // You might need to adjust mimeType
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0 && webSocket.readyState === WebSocket.OPEN) {
+                            webSocket.send(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstart = () => {
+                        statusDiv.textContent = 'Broadcasting...';
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        statusDiv.textContent = 'Stopped broadcasting. Previewing local camera.';
+                    };
+
+                    mediaRecorder.onerror = (event) => {
+                        console.error('MediaRecorder error:', event.error);
+                        statusDiv.textContent = `MediaRecorder Error: ${event.error.name}`;
+                        stopBroadcasting(); // Attempt to clean up
+                    };
+
+                    // Start recording and sending data in chunks
+                    mediaRecorder.start(1000); // Send data every 1000ms (1 second)
+                };
+
+                webSocket.onclose = () => {
+                    statusDiv.textContent = 'Disconnected from server.';
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                };
+
+                webSocket.onerror = (error) => {
+                    console.error('WebSocket Error:', error);
+                    statusDiv.textContent = 'WebSocket error. See console for details.';
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                };
+
+            } catch (error) {
+                console.error('Error accessing media devices.', error);
+                statusDiv.textContent = `Error: ${error.name}. Make sure you have a camera and have granted permission.`;
+                startButton.disabled = false;
+            }
+        };
+
+        stopButton.onclick = () => {
+            stopBroadcasting();
+        };
+
+        function stopBroadcasting() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                webSocket.close();
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            localVideo.srcObject = null;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusDiv.textContent = 'Stopped. Not connected.';
+        }
+
+        // Ensure cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopBroadcasting();
+        });
+    </script>
+</body>
+</html>

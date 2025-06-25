@@ -1,0 +1,35 @@
+{
+  "name": "video-streaming",
+  "version": "1.0.0",
+  "description": "Video streaming proof-of-concept",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/.bin/tsc",
+    "start": "node dist/index.js",
+    "dev": "./node_modules/.bin/tsc -w & npx nodemon dist/index.js"
+  },
+  "keywords": [
+    "video",
+    "stream",
+    "websocket",
+    "express",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.0.4",
+    "@types/ws": "^8.18.1",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.0",
+    "ws": "^8.18.2"
+  }
+}
