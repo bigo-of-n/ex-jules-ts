@@ -1,0 +1,27 @@
+{
+  "name": "finark-api-client",
+  "version": "0.1.0",
+  "description": "TypeScript client for the Finark API",
+  "main": "dist/apiClient.js",
+  "types": "dist/types.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "finark",
+    "api",
+    "client",
+    "typescript",
+    "mutual-funds",
+    "portfolio"
+  ],
+  "author": "Jules AI Agent",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist"
+  ]
+}
