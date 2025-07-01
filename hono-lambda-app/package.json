@@ -1,0 +1,28 @@
+{
+  "name": "hono-turso-app",
+  "version": "1.0.0",
+  "description": "Hono app on AWS Lambda with Turso and Secrets Manager",
+  "main": "dist/lambda.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/lambda.js",
+    "dev": "nodemon --watch src --ext ts --exec \"pnpm build && node dist/app.js\"",
+    "drizzle:generate": "drizzle-kit generate --schema=./src/db/schema.ts",
+    "drizzle:push": "drizzle-kit push --schema=./src/db/schema.ts"
+  },
+  "dependencies": {
+    "@hono/node-adapter": "^1.2.0",
+    "@hono/node-server": "^1.11.0",
+    "hono": "^4.3.0",
+    "@aws-sdk/client-secrets-manager": "^3.x",
+    "drizzle-orm": "^0.30.10",
+    "@libsql/client": "^0.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "drizzle-kit": "^0.21.4",
+    "typescript": "^5.x.x",
+    "@types/node": "^20.x.x"
+  }
+}

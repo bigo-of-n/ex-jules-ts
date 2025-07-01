@@ -1,0 +1,7 @@
+# This is an empty placeholder.
+# pnpm install will generate the actual content.
+# You can leave this file empty or with a minimal comment.
+
+lockfileVersion: 5.4 # Example version, pnpm will update this
+# Add any other necessary header information if pnpm requires it for an empty file,
+# though usually an empty file is fine and pnpm will populate it.

@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Hono App on AWS Lambda with Turso, Secrets Manager, and Public API Gateway Access
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    Description: The name of the deployment environment (e.g., dev, prod). This parameter allows you to deploy multiple instances of your application (e.g., 'dev', 'staging', 'prod') with distinct resource names and configurations, facilitating environment isolation.
+  SecretsManagerSecretName:
+    Type: String
+    Default: TursoCredentials # Default name for the secret holding Turso credentials
+    Description: Name of the secret in AWS Secrets Manager containing the TURSO_DATABASE_URL and TURSO_AUTH_TOKEN. This ensures sensitive database credentials are not hardcoded but securely retrieved at runtime.
+
+Resources:
+  # Hono Lambda Function
+  HonoAppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'HonoAppFunction-${EnvironmentName}' # Dynamically names the Lambda function based on the environment.
+      CodeUri: dist/ # Specifies the local directory containing your COMPILED Lambda function code. SAM packages this directory for deployment.
+      Handler: lambda.handler # The entry point for your Lambda function (file.method).
+      Runtime: nodejs20.x # Specifies the Node.js runtime version for the Lambda function. Node.js 20.x is a Long Term Support (LTS) version, offering good performance and features.
+      MemorySize: 512 # Allocates 512MB of memory to the Lambda function. Adjust this based on your application's memory requirements. More memory often means more CPU, potentially reducing execution duration and cost for CPU-bound tasks.
+      Timeout: 30 # Sets the maximum execution time for the Lambda function to 30 seconds. This should be sufficient for most API requests but can be increased if your database queries or processing are lengthy.
+      Architectures:
+        - arm64 # Specifies the ARM64 architecture (Graviton processor). This often provides better price-performance compared to x86_64 for Node.js workloads.
+      Environment:
+        Variables:
+          NODE_ENV: !Ref EnvironmentName # Passes the environment name as an environment variable to your Lambda function, allowing conditional logic (e.g., logging levels) based on the deployment stage.
+          AWS_REGION: !Ref AWS::Region # Automatically injects the AWS region where the Lambda is deployed, useful for AWS SDK calls.
+          SECRETS_MANAGER_SECRET_NAME: !Ref SecretsManagerSecretName # Passes the name of the Secrets Manager secret to the Lambda function, allowing it to retrieve Turso credentials.
+      Policies:
+        # This policy grants the Lambda function permission to retrieve secrets from AWS Secrets Manager.
+        # For more on Lambda IAM permissions, see: https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SecretsManagerSecretName}-*'
+      Events:
+        # Defines an API Gateway event source that triggers this Lambda function.
+        # For more on API Gateway event sources, see: https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html
+        HonoApi:
+          Type: Api # Specifies that this is an API Gateway event.
+          Properties:
+            Path: /{proxy+} # A catch-all path that forwards all requests to the Lambda function. Hono then handles the routing internally.
+            Method: any # Allows all HTTP methods (GET, POST, PUT, DELETE, etc.) to trigger the Lambda.
+            RestApiId: !Ref HonoRestApi # Links this Lambda function to the API Gateway defined below.
+            # IMPORTANT: The absence of an 'Auth' block here means this API endpoint is publicly accessible without authentication.
+            # This aligns with the requirement for "public access".
+
+  # API Gateway
+  HonoRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'HonoRestApi-${EnvironmentName}' # Dynamically names the API Gateway.
+      StageName: !Ref EnvironmentName # Defines the API Gateway deployment stage (e.g., 'dev', 'prod'). This creates a deployable endpoint.
+      DefinitionFormat: OpenApiFn::V2 # Specifies that the API definition is provided using OpenAPI (Swagger) format.
+      DefinitionBody: # The OpenAPI definition embedded directly in the SAM template.
+        swagger: '2.0'
+        info:
+          title: !Sub 'HonoAppApi-${EnvironmentName}' # Title for your API, visible in the API Gateway console.
+        schemes:
+          - https # Enforces HTTPS for all API interactions, a security best practice.
+        paths:
+          '/{proxy+}': # Defines a catch-all path for the API Gateway.
+            x-amazon-apigateway-any-method: # A special extension for API Gateway to handle all HTTP methods for this path.
+              produces:
+                - application/json # Indicates that the API produces JSON responses.
+              parameters:
+                - name: proxy
+                  in: path
+                  required: true
+                  type: string # Defines the 'proxy' path parameter.
+              x-amazon-apigateway-integration: # Defines how API Gateway integrates with the Lambda function.
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HonoAppFunction.Arn}/invocations'
+                passthroughBehavior: when_no_match # Forwards the request body as-is if no mapping template matches.
+                httpMethod: POST # API Gateway internally invokes Lambda functions via POST.
+                type: aws_proxy # Uses the AWS_PROXY integration, simplifying request/response mapping between API Gateway and Lambda.
+
+Outputs:
+  HonoApiUrl:
+    Description: "API Gateway endpoint URL for Hono App"
+    Value: !Sub "https://${HonoRestApi}.execute-api.${AWS::Region}.amazonaws.com/${EnvironmentName}" # Provides the full URL of your deployed API Gateway endpoint.
+  HonoFunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref HonoAppFunction # Provides the logical ID of your deployed Lambda function.
