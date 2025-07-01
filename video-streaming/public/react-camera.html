@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camera Broadcast</title>
+  </head>
+  <body>
+    <h1>Camera Broadcast</h1>
+    <div id="status"></div>
+    <button id="toggle" onclick="toggleCamera()">Toggle Camera</button>
+    <button id="startButton" onclick="startBroadcasting()">
+      Start Broadcast
+    </button>
+    <button id="stopButton" onclick="stopStreamAndBroadcasting()">
+      Stop Broadcast
+    </button>
+    <div>
+      <video id="localVideo" autoplay muted playsinline></video>
+    </div>
+    <script src="js/camera-test.js"></script>
+  </body>
+</html>

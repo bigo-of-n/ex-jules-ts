@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Broadcaster</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom styles for the Inter font and overall layout */
+      body {
+        font-family: "Inter", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f0f4f8; /* Light background */
+        padding: 20px;
+      }
+      .container {
+        background-color: #ffffff;
+        padding: 32px;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        width: 100%;
+        max-width: 768px; /* Max width for larger screens */
+        text-align: center;
+      }
+      video {
+        border: 1px solid #e2e8f0; /* Light gray border */
+        margin-bottom: 16px;
+        border-radius: 8px;
+        width: 100%; /* Make video responsive */
+        height: auto; /* Maintain aspect ratio */
+        max-height: 480px; /* Limit max height */
+        background-color: #edf2f7; /* Light gray background for video area */
+      }
+      button {
+        padding: 12px 24px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      button:hover {
+        transform: translateY(-2px);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      #startButton {
+        background-color: #4f46e5; /* Indigo */
+        color: white;
+      }
+      #startButton:hover:not(:disabled) {
+        background-color: #4338ca;
+      }
+      #stopButton {
+        background-color: #ef4444; /* Red */
+        color: white;
+        margin-left: 16px;
+      }
+      #stopButton:hover:not(:disabled) {
+        background-color: #dc2626;
+      }
+      #status {
+        margin-top: 16px;
+        font-style: italic;
+        color: #4a5568; /* Gray-700 */
+      }
+      #cameraInfo {
+        margin-bottom: 16px;
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 500; /* font-medium */
+        color: #4a5568; /* Gray-700 */
+      }
+      #cameraSelectContainer {
+        margin-bottom: 16px;
+      }
+      #cameraSelect {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+          0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        appearance: none;
+        border: 1px solid #cbd5e0; /* Gray-300 */
+        border-radius: 0.5rem; /* rounded-lg */
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        color: #4a5568; /* Gray-700 */
+        line-height: 1.25;
+        outline: none;
+        transition: all 0.15s ease-in-out;
+      }
+      #cameraSelect:focus {
+        border-color: #6366f1; /* Indigo-500 */
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5); /* ring-indigo-500 */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="text-4xl font-extrabold text-gray-900 mb-6">
+        Video Broadcaster
+      </h1>
+
+      <!-- Div to display the number of cameras found -->
+      <div id="cameraInfo" class="text-gray-600">
+        <!-- This will be populated by JavaScript -->
+      </div>
+
+      <!-- Dropdown for selecting camera, hidden by default -->
+      <div id="cameraSelectContainer" class="mt-4 hidden">
+        <label
+          for="cameraSelect"
+          class="block text-gray-700 text-sm font-bold mb-2"
+          >Select Camera:</label
+        >
+        <select id="cameraSelect"></select>
+      </div>
+
+      <video id="localVideo" autoplay muted playsinline></video>
+
+      <div class="flex justify-center mt-4">
+        <button id="startButton">Start Broadcasting</button>
+        <button id="stopButton" disabled>Stop Broadcasting</button>
+      </div>
+      <div id="status" class="mt-4 text-sm">Not connected</div>
+    </div>
+
+    <!-- Link to the external JavaScript file -->
+    <script src="js/broadcaster.js"></script>
+  </body>
+</html>
