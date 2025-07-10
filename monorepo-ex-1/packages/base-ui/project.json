@@ -1,0 +1,9 @@
+{
+  "name": "base-ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/base-ui/src",
+  "projectType": "library",
+  "tags": ["scope:base-ui", "type:ui"],
+  "// targets": "to see all targets run: nx show project base-ui --web",
+  "targets": {}
+}
