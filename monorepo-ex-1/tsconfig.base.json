@@ -1,0 +1,24 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@monorepo-ex-1/base-ui": ["packages/base-ui/src/index.ts"],
+      "@/components/*": ["packages/base-ui/src/lib/components/*"],
+      "@/lib/*": ["packages/base-ui/src/lib/*"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}
